@@ -69,7 +69,7 @@ for test_loader in test_loaders:
             save_img_path = osp.join(dataset_dir, img_name + suffix + '.png')
         else:
             save_img_path = osp.join(dataset_dir, img_name + '.png')
-        util.save_img(sr_img, save_img_path, mode=opt['datasets']['color'])
+        util.save_img(sr_img, save_img_path, mode=opt['datasets']['test_1']['color'])
 
         # calculate PSNR and SSIM
         if need_GT:
