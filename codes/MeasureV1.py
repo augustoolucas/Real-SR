@@ -1,6 +1,7 @@
 import glob
 import os
 import time
+import mlflow
 from collections import OrderedDict
 
 import numpy as np
@@ -88,11 +89,15 @@ def measure_dirs(dirA, dirB, use_gpu, verbose=False):
     measure = Measure(use_gpu=use_gpu)
     print('Measure device:', measure.device)
     results = []
-    for pathA, pathB in zip(paths_A, paths_B):
+    for idx, (pathA, pathB) in enumerate(zip(paths_A, paths_B)):
         result = OrderedDict()
 
         t = time.time()
         result['psnr'], result['ssim'], result['lpips'] = measure.measure(imread(pathA), imread(pathB))
+        mlflow.log_metrics({'PSNR': result['psnr'],
+                            'SSIM': result['ssim'],
+                            'LPIPS': result['lpips']},
+                           step=idx)
         d = time.time() - t
         vprint(f"{pathA.split('/')[-1]}, {pathB.split('/')[-1]}, {format_result(**result)}, {d:0.1f}")
 
@@ -101,6 +106,10 @@ def measure_dirs(dirA, dirB, use_gpu, verbose=False):
     psnr = np.mean([result['psnr'] for result in results])
     ssim = np.mean([result['ssim'] for result in results])
     lpips = np.mean([result['lpips'] for result in results])
+
+    mlflow.log_metrics({'Average PSNR': psnr,
+                        'Average SSIM': ssim,
+                        'Average LPIPS': lpips})
 
     vprint(f"Final Result: {format_result(psnr, ssim, lpips)}, {time.time() - t_init:0.1f}s")
 
@@ -111,6 +120,7 @@ if __name__ == "__main__":
     parser.add_argument('-dirB', default='', type=str)
     parser.add_argument('-type', default='png')
     parser.add_argument('--use_gpu', action='store_true', default=False)
+    parser.add_argument('--run_id', type=str, required=True, help='')
     args = parser.parse_args()
 
     dirA = args.dirA
@@ -119,5 +129,6 @@ if __name__ == "__main__":
     use_gpu = args.use_gpu
 
     if len(dirA) > 0 and len(dirB) > 0:
-        measure_dirs(dirA, dirB, use_gpu=use_gpu, verbose=True)
+        with mlflow.start_run(run_id=args.run_id):
+            measure_dirs(dirA, dirB, use_gpu=use_gpu, verbose=True)
 
